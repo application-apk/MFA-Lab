@@ -1,0 +1,335 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مختبر المصادقة متعددة العوامل MFA</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0b1120;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,.5);
+            width: 100%;
+            max-width: 390px;
+            text-align: center;
+            border: 2px solid #3b82f6;
+        }
+
+        h2 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn .5s;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .fingerprint-icon {
+            font-size: 65px;
+            color: #fbbf24;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: .3s;
+        }
+
+        .fingerprint-icon:hover {
+            transform: scale(1.1);
+        }
+
+        .success-message {
+            color: #10b981;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .info {
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        .status {
+            color: #60a5fa;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .reset {
+            background: #475569;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>محاكاة تسجيل الدخول MFA</h2>
+
+    <!-- المرحلة الأولى -->
+    <div id="step1" class="step active">
+
+        <p>المرحلة الأولى: عامل المعرفة</p>
+
+        <input
+            type="email"
+            id="email"
+            placeholder="البريد الإلكتروني"
+            autocomplete="off"
+        >
+
+        <input
+            type="password"
+            id="password"
+            placeholder="كلمة المرور"
+            autocomplete="off"
+        >
+
+        <button onclick="checkPassword()">
+            تسجيل الدخول
+        </button>
+
+        <p id="error1" class="error-message"></p>
+
+    </div>
+
+    <!-- المرحلة الثانية -->
+    <div id="step2" class="step">
+
+        <p>المرحلة الثانية: عامل الحيازة</p>
+
+        <p class="info">
+            تم إرسال رمز تحقق تجريبي إلى هاتفك.
+        </p>
+
+        <input
+            type="text"
+            id="otp"
+            placeholder="أدخل رمز التحقق"
+            maxlength="4"
+            inputmode="numeric"
+        >
+
+        <button onclick="checkOTP()">
+            تأكيد الرمز
+        </button>
+
+        <p id="error2" class="error-message"></p>
+
+    </div>
+
+    <!-- المرحلة الثالثة -->
+    <div id="step3" class="step">
+
+        <p>المرحلة الأخيرة: السمات الحيوية</p>
+
+        <div class="fingerprint-icon"
+             onclick="scanFingerprint()">
+            👆
+        </div>
+
+        <p class="info">
+            اضغط على الإصبع لمحاكاة عملية مسح البصمة.
+        </p>
+
+        <p id="bio-status" class="status"></p>
+
+    </div>
+
+    <!-- النجاح -->
+    <div id="step4" class="step">
+
+        <p class="success-message">
+            ✅ تم التحقق من الهوية بنجاح!
+        </p>
+
+        <p>
+            لقد اجتزت المصادقة متعددة العوامل MFA.
+        </p>
+
+        <button class="reset" onclick="location.reload()">
+            إعادة التجربة
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+    // الانتقال بين المراحل
+    function showStep(number) {
+
+        document.querySelectorAll(".step").forEach(step => {
+            step.classList.remove("active");
+        });
+
+        document.getElementById("step" + number)
+            .classList.add("active");
+    }
+
+
+    // المرحلة الأولى: إرسال بيانات الاختبار للسيرفر
+    async function checkPassword() {
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        const error = document.getElementById("error1");
+
+        error.innerText = "";
+
+        if (!email || !password) {
+            error.innerText = "يرجى إدخال البريد وكلمة المرور";
+            return;
+        }
+
+        try {
+
+            const response = await fetch("/api/login", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.ok) {
+
+                showStep(2);
+
+            } else {
+
+                error.innerText = "بيانات الدخول غير صحيحة";
+
+            }
+
+        } catch (error) {
+
+            error.innerText = "حدث خطأ في الاتصال بالسيرفر";
+
+        }
+
+    }
+
+
+    // المرحلة الثانية: رمز تحقق تجريبي
+    function checkOTP() {
+
+        const otp = document.getElementById("otp").value;
+
+        const error = document.getElementById("error2");
+
+        if (otp === "2244") {
+
+            error.innerText = "";
+
+            showStep(3);
+
+        } else {
+
+            error.innerText = "رمز التحقق غير صحيح! جرب 1234";
+
+        }
+
+    }
+
+
+    // المرحلة الثالثة: محاكاة البصمة
+    function scanFingerprint() {
+
+        const status = document.getElementById("bio-status");
+
+        status.innerText = "جاري مسح البصمة...";
+
+        setTimeout(() => {
+
+            status.innerText = "تم التعرف على البصمة بنجاح!";
+
+            setTimeout(() => {
+
+                showStep(4);
+
+            }, 1000);
+
+        }, 1500);
+
+    }
+
+</script>
+
+</body>
+</html>
